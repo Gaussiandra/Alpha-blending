@@ -10,7 +10,5 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
                unsigned frontHeight, unsigned frontWidth, unsigned backWidth,
                unsigned backX, unsigned backY);
 
-// inline unsigned char *pixelPtr(sf::Image pic, unsigned x, unsigned y);
-
 inline unsigned char *pixelPtr(unsigned char pic[], unsigned x, 
                                unsigned y, unsigned width);

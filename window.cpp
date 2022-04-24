@@ -1,5 +1,3 @@
-// #pragma pack(16)
-
 #include <SFML/Graphics.hpp>
 #include <cstdio>
 #include <cstdlib>
@@ -68,12 +66,9 @@ int main()
         }   
 
         blendPics(backAlignedCopy, 
-                  frontAlignedCopy, blendedPic, 
-                  front.getSize().y, front.getSize().x, back.getSize().x,
-                  420, 232);
-        // unsigned char back[], unsigned char front[], unsigned char blendedPic[], 
-        //        unsigned frontHeight, unsigned frontWidth, unsigned backWidth,
-        //        unsigned backX, unsigned backY
+                frontAlignedCopy, blendedPic, 
+                front.getSize().y, front.getSize().x, back.getSize().x,
+                420, 232);
         texture.update(blendedPic);
 
         window.clear();
@@ -89,6 +84,8 @@ int main()
 
         window.display();
     }
+    // sse O0 2080, nosse O0 1250, x1.6
+    // sse O2 2020 nosse O2 1270
 
     free(backAlignedCopy);
     free(frontAlignedCopy);

@@ -20,8 +20,8 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
             // fr = [r3 g3 b3 a3 | r2 g2 b2 a2 | r1 g1 b1 a1 | r0 g0 b0 a0]
             //-----------------------------------------------------------------------
 
-            __m128i fr = _mm_load_si128((__m128i*) pixelPtr(front, x, y, frontWidth));
-            __m128i bk = _mm_load_si128((__m128i*) pixelPtr(back, x + backX, y + backY, backWidth));                  
+            __m128i frontLoPixels = _mm_load_si128((__m128i*) pixelPtr(front, x, y, frontWidth));
+            __m128i backLoPixels = _mm_load_si128((__m128i*) pixelPtr(back, x + backX, y + backY, backWidth));                  
 
             // Move the upper 2 single-precision (32-bit) floating-point elements 
             // from b to the lower 2 elements of dst, 
@@ -37,8 +37,8 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
             // FR = [-- -- -- -- | -- -- -- -- | a3 r3 g3 b3 | a2 r2 g2 b2]
             //-----------------------------------------------------------------------
             
-            __m128i FR = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) fr);          // FR = (fr >> 8*8)
-            __m128i BK = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) bk);       
+            __m128i frontHiPixels = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) frontLoPixels);          // FR = (fr >> 8*8)
+            __m128i backHiPixels = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) backLoPixels);       
 
             //-----------------------------------------------------------------------
             //       15 14 13 12   11 10  9  8    7  6  5  4    3  2  1  0
@@ -50,11 +50,11 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
             // fr = [-- a1 -- r1 | -- g1 -- b1 | -- a0 -- r0 | -- g0 -- b0]
             //-----------------------------------------------------------------------
 
-            fr = _mm_cvtepu8_epi16(fr);                                              // fr[i] = (WORD) fr[i]
-            FR = _mm_cvtepu8_epi16(FR);                                           
+            frontLoPixels = _mm_cvtepu8_epi16(frontLoPixels);                                              // fr[i] = (WORD) fr[i]
+            frontHiPixels = _mm_cvtepu8_epi16(frontHiPixels);                                           
 
-            bk = _mm_cvtepu8_epi16(bk);
-            BK = _mm_cvtepu8_epi16(BK);
+            backLoPixels = _mm_cvtepu8_epi16(backLoPixels);
+            backHiPixels = _mm_cvtepu8_epi16(backHiPixels);
 
             //-----------------------------------------------------------------------
             //       15 14 13 12   11 10  9  8    7  6  5  4    3  2  1  0
@@ -66,19 +66,19 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
 
             static const __m128i moveA = _mm_set_epi8(Z, 0xEu, Z, 0xEu, Z, 0xEu, Z, 0xEu, 
                                                       Z, 0x6u, Z, 0x6u, Z, 0x6u, Z, 0x6u);
-            __m128i a = _mm_shuffle_epi8(fr, moveA);                                
-            __m128i A = _mm_shuffle_epi8(FR, moveA);
+            __m128i a = _mm_shuffle_epi8(frontLoPixels, moveA);                                
+            __m128i A = _mm_shuffle_epi8(frontHiPixels, moveA);
             
             //-----------------------------------------------------------------------
 
-            fr = _mm_mullo_epi16(fr, a);                                             // fr *= a mullo
-            FR = _mm_mullo_epi16(FR, A);
+            frontLoPixels = _mm_mullo_epi16(frontLoPixels, a);                                             // fr *= a
+            frontHiPixels = _mm_mullo_epi16(frontHiPixels, A);
 
-            bk = _mm_mullo_epi16(bk, _mm_sub_epi8(_255, a));                         // bk *= (255-a)  sub
-            BK = _mm_mullo_epi16(BK, _mm_sub_epi8(_255, A));
+            backLoPixels = _mm_mullo_epi16(backLoPixels, _mm_sub_epi8(_255, a));                         // bk *= (255-a)
+            backHiPixels = _mm_mullo_epi16(backHiPixels, _mm_sub_epi8(_255, A));
 
-            __m128i sum = _mm_add_epi16(fr, bk);                                     // sum = fr*a + bk*(255-a)
-            __m128i SUM = _mm_add_epi16(FR, BK);
+            __m128i sumLo = _mm_add_epi16(frontLoPixels, backLoPixels);                                     // sum = fr*a + bk*(255-a)
+            __m128i sumHi = _mm_add_epi16(frontHiPixels, backHiPixels);
 
             //-----------------------------------------------------------------------
             //        15 14 13 12   11 10  9  8    7  6  5  4    3  2  1  0
@@ -91,8 +91,8 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
 
             static const __m128i moveSum = _mm_set_epi8(Z,    Z,    Z,    Z,    Z,    Z,    Z,    Z, 
                                                         0xFu, 0xDu, 0xBu, 0x9u, 0x7u, 0x5u, 0x3u, 0x1u);
-            sum = _mm_shuffle_epi8(sum, moveSum);                                      
-            SUM = _mm_shuffle_epi8(SUM, moveSum);                                    // sum[i] = (sium[i] >> 8) = (sum[i] / 256)
+            sumLo = _mm_shuffle_epi8(sumLo, moveSum);                                      
+            sumHi = _mm_shuffle_epi8(sumHi, moveSum);                                    // sum[i] = (sium[i] >> 8) = (sum[i] / 256)
             
             // Move the lower 2 single-precision (32-bit) 
             // floating-point elements from b to the upper 2 elements of dst, 
@@ -108,7 +108,7 @@ void blendPics(unsigned char back[], unsigned char front[], unsigned char blende
             // color = [a3 r3 g3 b3 | a2 r2 g2 b2 | a1 r1 g1 b1 | a0 r0 g0 b0]
             //-----------------------------------------------------------------------
 
-            __m128i color = (__m128i) _mm_movelh_ps((__m128) sum, (__m128) SUM);     // color = (sumHi << 8*8) | sum
+            __m128i color = (__m128i) _mm_movelh_ps((__m128) sumLo, (__m128) sumHi);     // color = (sumHi << 8*8) | sum
 
             static const __m128i ones = _mm_set_epi8(1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u);
             color = _mm_add_epi8(color, ones);

@@ -1,6 +1,6 @@
 SFML_flags = -lsfml-graphics -lsfml-window -lsfml-system
-CXX_NoSSE_flags = -O0
-CXX_SSE_flags = -D SSE -O0 -mavx2 
+CXX_NoSSE_flags = -O2
+CXX_SSE_flags = -D SSE -O2 -mavx2 
 
 #---------------------------------------
 
